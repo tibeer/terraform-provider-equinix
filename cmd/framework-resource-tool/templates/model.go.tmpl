@@ -1,0 +1,49 @@
+package {{ .Service }}_{{ .Resource }}
+
+import (
+    "github.com/hashicorp/terraform-plugin-framework/types"
+    "github.com/hashicorp/terraform-plugin-framework/diag"
+    "{{ .SDK }}"
+)
+
+type {{ .Service | ToCamelCase }}{{ .Resource | ToCamelCase }}ResourceModel struct {
+    ID types.String `tfsdk:"id"`
+    {{- range .Fields.TypeString }}
+    {{ .Name | ToCamelCase }} types.String `tfsdk:"{{ .Name }}"` 
+    {{- end }}
+    {{- range .Fields.TypeBool }}
+    {{ .Name | ToCamelCase }} types.Bool   `tfsdk:"{{ .Name }}"` 
+    {{- end }}
+    {{- range .Fields.TypeInt }}
+    {{ .Name | ToCamelCase }} types.Int64   `tfsdk:"{{ .Name }}"` 
+    {{- end }}
+}
+
+func (rm *{{ .Service | ToCamelCase }}{{ .Resource | ToCamelCase }}ResourceModel) parse({{ .Resource }} *{{ .SDK | SDKTypeName }}.{{ .Resource | ToPascalCase }}) diag.Diagnostics {
+    var diags diag.Diagnostics
+
+    // Populate the model fields from the {{ .Resource }}
+    {{- range .Fields.TypeString }}
+    {{- if .Value }}
+    rm.{{ .Name | ToCamelCase }} = types.StringValue({{ $.Resource }}.{{ .Value }})
+    {{- else }}
+    rm.{{ .Name | ToCamelCase }} = types.StringValue({{ $.Resource }}.{{ .Name | ToCamelCase }})
+    {{- end }}
+    {{- end }}
+    {{- range .Fields.TypeBool }}
+    {{- if .Value }}
+    rm.{{ .Name | ToCamelCase }} = types.BoolValue({{ $.Resource }}.{{ .Value }})
+    {{- else }}
+    rm.{{ .Name | ToCamelCase }} = types.BoolValue({{ $.Resource }}.{{ .Name | ToCamelCase }})
+    {{- end }}
+    {{- end }}
+    {{- range .Fields.TypeInt }}
+    {{- if .Value }}
+    rm.{{ .Name | ToCamelCase }} = types.Int64Value(int64({{ $.Resource }}.{{ .Value }}))
+    {{- else }}
+    rm.{{ .Name | ToCamelCase }} = types.Int64Value(int64({{ $.Resource }}.{{ .Name | ToCamelCase }}))
+    {{- end }}
+    {{- end }}
+
+    return diags
+}

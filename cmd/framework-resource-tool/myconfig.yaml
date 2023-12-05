@@ -1,0 +1,11 @@
+sdk: github.com/packethost/packngo
+resource: device
+service: metal
+fields:
+  type_string:
+    - name: metro
+      value: Metro.ID
+    - name: project_id
+      value: Project.ID
+  type_bool:
+    - name: locked

@@ -26,6 +26,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/oauth2 v0.14.0
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
