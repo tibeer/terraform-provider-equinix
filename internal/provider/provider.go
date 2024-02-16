@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/equinix/terraform-provider-equinix/internal/resources/metal/vlans"
 	"regexp"
 
 	"github.com/equinix/terraform-provider-equinix/internal/config"
@@ -117,6 +118,7 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 		metalprojectsshkey.NewResource,
 		metalsshkey.NewResource,
 		metalconnection.NewResource,
+		vlans.NewResource,
 	}
 }
 
@@ -125,5 +127,6 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 		metalgateway.NewDataSource,
 		metalprojectsshkey.NewDataSource,
 		metalconnection.NewDataSource,
+		vlans.NewDataSource,
 	}
 }

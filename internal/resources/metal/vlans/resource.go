@@ -3,190 +3,197 @@ package vlans
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
-	"path"
+	"time"
 
-	"github.com/equinix/terraform-provider-equinix/internal/config"
-	"github.com/equinix/terraform-provider-equinix/internal/converters"
 	equinix_errors "github.com/equinix/terraform-provider-equinix/internal/errors"
+	"github.com/equinix/terraform-provider-equinix/internal/framework"
 
 	"github.com/equinix/equinix-sdk-go/services/metalv1"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/packethost/packngo"
 )
 
-func Resource() *schema.Resource {
-	return &schema.Resource{
-		CreateWithoutTimeout: resourceMetalVlanCreate,
-		ReadWithoutTimeout:   resourceMetalVlanRead,
-		DeleteWithoutTimeout: resourceMetalVlanDelete,
-		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
-		},
-		Schema: map[string]*schema.Schema{
-			"project_id": {
-				Type:        schema.TypeString,
-				Description: "ID of parent project",
-				Required:    true,
-				ForceNew:    true,
-			},
-			"description": {
-				Type:        schema.TypeString,
-				Description: "Description string",
-				Optional:    true,
-				ForceNew:    true,
-			},
-			"facility": {
-				Type:          schema.TypeString,
-				Description:   "Facility where to create the VLAN",
-				Deprecated:    "Use metro instead of facility.  For more information, read the migration guide: https://registry.terraform.io/providers/equinix/equinix/latest/docs/guides/migration_guide_facilities_to_metros_devices",
-				Optional:      true,
-				ForceNew:      true,
-				ConflictsWith: []string{"metro"},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					// suppress diff when unsetting facility
-					if len(old) > 0 && new == "" {
-						return true
-					}
-					return old == new
-				},
-			},
-			"metro": {
-				Type:          schema.TypeString,
-				Description:   "Metro in which to create the VLAN",
-				Optional:      true,
-				ForceNew:      true,
-				ConflictsWith: []string{"facility"},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					_, facOk := d.GetOk("facility")
-					// new - new val from template
-					// old - old val from state
-					//
-					// suppress diff if metro is manually set for first time, and
-					// facility is already set
-					if len(new) > 0 && old == "" && facOk {
-						return facOk
-					}
-					return old == new
-				},
-				StateFunc: converters.ToLowerIf,
-			},
-			"vxlan": {
-				Type:        schema.TypeInt,
-				Description: "VLAN ID, must be unique in metro",
-				ForceNew:    true,
-				Optional:    true,
-				Computed:    true,
-			},
-		},
-	}
+type Resource struct {
+	framework.BaseResource
+	framework.WithTimeouts
 }
 
-func resourceMetalVlanCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	meta.(*config.Config).AddModuleToMetalUserAgent(d)
-	client := meta.(*config.Config).Metalgo
-
-	facRaw, facOk := d.GetOk("facility")
-	metroRaw, metroOk := d.GetOk("metro")
-	vxlanRaw, vxlanOk := d.GetOk("vxlan")
-
-	if !facOk && !metroOk {
-		return diag.FromErr(equinix_errors.FriendlyError(errors.New("one of facility or metro must be configured")))
+func NewResource() resource.Resource {
+	r := Resource{
+		BaseResource: framework.NewBaseResource(
+			framework.BaseResourceConfig{
+				Name: "equinix_metal_vlan",
+			},
+		),
 	}
-	if facOk && vxlanOk {
-		return diag.FromErr(equinix_errors.FriendlyError(errors.New("you can set vxlan only for metro vlans")))
+	r.SetDefaultDeleteTimeout(20 * time.Minute)
+
+	return &r
+}
+
+func (r *Resource) Schema(
+	ctx context.Context,
+	req resource.SchemaRequest,
+	resp *resource.SchemaResponse,
+) {
+	s := resourceSchema(ctx)
+	if s.Blocks == nil {
+		s.Blocks = make(map[string]schema.Block)
+	}
+	s.Blocks["timeouts"] = timeouts.Block(ctx, timeouts.Opts{
+		Delete: true,
+	})
+	resp.Schema = s
+}
+
+func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, response *resource.CreateResponse) {
+	r.Meta.AddFwModuleToMetalUserAgent(ctx, request.ProviderMeta)
+	client := r.Meta.Metal
+
+	var data DataSourceModel
+	response.Diagnostics.Append(request.Config.Get(ctx, &data)...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+
+	if data.Facility.IsNull() && data.Metro.IsNull() {
+		response.Diagnostics.AddError("Invalid inout params",
+			equinix_errors.FriendlyError(errors.New("one of facility or metro must be configured")).Error())
+		return
+	}
+	if !(data.Facility.IsNull() && data.Vxlan.IsNull()) {
+		response.Diagnostics.AddError("Invalid inout params",
+			equinix_errors.FriendlyError(errors.New("you can set vxlan only for metro vlans")).Error())
+		return
 	}
 
 	createRequest := metalv1.VirtualNetworkCreateInput{
-		Description: metalv1.PtrString(d.Get("description").(string)),
+		Description: data.Description.ValueStringPointer(),
 	}
-	if metroOk {
-		createRequest.Metro = metalv1.PtrString(metroRaw.(string))
-		createRequest.Vxlan = metalv1.PtrInt32(int32(vxlanRaw.(int)))
+	if !data.Metro.IsNull() {
+		createRequest.Metro = data.Metro.ValueStringPointer()
+		createRequest.Vxlan = metalv1.PtrInt32(int32(data.Vxlan.ValueInt64()))
 	}
-	if facOk {
-		createRequest.Facility = metalv1.PtrString(facRaw.(string))
+	if !data.Metro.IsNull() {
+		createRequest.Facility = data.Facility.ValueStringPointer()
 	}
-	projectId := d.Get("project_id").(string)
-	vlan, _, err := client.VLANsApi.
-		CreateVirtualNetwork(context.Background(), projectId).
-		VirtualNetworkCreateInput(createRequest).
-		Execute()
+
+	var vlanModel ResourceModel
+	vlan, _, err := client.ProjectVirtualNetworks.Create(&packngo.VirtualNetworkCreateRequest{
+		ProjectID:   data.ProjectID.ValueString(),
+		Description: data.Description.ValueString(),
+		Facility:    data.Facility.ValueString(),
+		Metro:       data.Metro.ValueString(),
+		VXLAN:       int(data.Vxlan.ValueInt64()),
+	})
 	if err != nil {
-		return diag.FromErr(equinix_errors.FriendlyError(err))
+		response.Diagnostics.AddError("Error creating Vlan using vlanId", equinix_errors.FriendlyError(err).Error())
+		return
 	}
-	d.SetId(vlan.GetId())
-	return resourceMetalVlanRead(ctx, d, meta)
+
+	// Parse API response into the Terraform state
+	response.Diagnostics.Append(vlanModel.parse(vlan)...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+
+	// Set state to fully populated data
+	response.Diagnostics.Append(response.State.Set(ctx, &vlanModel)...)
+	return
 }
 
-func resourceMetalVlanRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	meta.(*config.Config).AddModuleToMetalUserAgent(d)
-	client := meta.(*config.Config).Metalgo
+func (r *Resource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
+	r.Meta.AddFwModuleToMetalUserAgent(ctx, request.ProviderMeta)
+	client := r.Meta.Metal
 
-	vlan, _, err := client.VLANsApi.
-		GetVirtualNetwork(context.Background(), d.Id()).
-		Include([]string{"assigned_to"}).
-		Execute()
+	var data ResourceModel
+	response.Diagnostics.Append(request.State.Get(ctx, &data)...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+
+	vlan, _, err := client.ProjectVirtualNetworks.Get(
+		data.ID.ValueString(),
+		&packngo.GetOptions{Includes: []string{"assigned_to"}},
+	)
 	if err != nil {
-		err = equinix_errors.FriendlyError(err)
 		if equinix_errors.IsNotFound(err) {
-			d.SetId("")
-			return nil
+			response.Diagnostics.AddWarning(
+				"Equinix Metal Vlan not found during refresh",
+				fmt.Sprintf("[WARN] Vlan (%s) not found, removing from state", data.ID.ValueString()),
+			)
+			response.State.RemoveResource(ctx)
+			return
 		}
-		return diag.FromErr(err)
-
+		response.Diagnostics.AddError("Error fetching Vlan using vlanId",
+			equinix_errors.FriendlyError(err).Error())
+		return
 	}
-	d.Set("description", vlan.GetDescription())
-	//d.Set("project_id", vlan)
-	d.Set("vxlan", vlan.Vxlan)
-	d.Set("facility", vlan.GetFacility())
-	d.Set("metro", vlan.GetMetro())
-	return nil
+
+	response.Diagnostics.Append(data.parse(vlan)...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+
+	response.Diagnostics.Append(response.State.Set(ctx, &data)...)
 }
 
-func resourceMetalVlanDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	meta.(*config.Config).AddModuleToMetalUserAgent(d)
-	client := meta.(*config.Config).Metalgo
+func (r *Resource) Update(ctx context.Context, request resource.UpdateRequest, response *resource.UpdateResponse) {
+	//TODO implement me
+	panic("implement me")
+}
 
-	vlan, resp, err := client.VLANsApi.
-		GetVirtualNetwork(ctx, d.Id()).
-		Include([]string{"instances", "meta_gateway"}).
-		Execute()
-	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
-		return diag.FromErr(equinix_errors.FriendlyError(err))
-	} else if err != nil {
-		// missing vlans are deleted
-		return nil
+func (r *Resource) Delete(ctx context.Context, request resource.DeleteRequest, response *resource.DeleteResponse) {
+	r.Meta.AddFwModuleToMetalUserAgent(ctx, request.ProviderMeta)
+	client := r.Meta.Metal
+
+	var data ResourceModel
+	response.Diagnostics.Append(request.State.Get(ctx, &data)...)
+	if response.Diagnostics.HasError() {
+		return
+	}
+
+	vlan, resp, err := client.ProjectVirtualNetworks.Get(
+		data.ID.ValueString(),
+		&packngo.GetOptions{Includes: []string{"instances", "meta_gateway"}},
+	)
+	if err != nil {
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
+			response.Diagnostics.AddWarning(
+				"Equinix Metal Vlan not found during delete",
+				err.Error(),
+			)
+			return
+		}
+		response.Diagnostics.AddError("Error fetching Vlan using vlanId",
+			equinix_errors.FriendlyError(err).Error())
+		return
 	}
 
 	// all device ports must be unassigned before delete
-	for _, i := range vlan.GetInstances() {
-		devideId := path.Base(i.GetHref())
-		device, resp, _ := client.DevicesApi.FindDeviceById(ctx, devideId).Execute()
-		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
-			break
-		}
-		for _, p := range device.GetNetworkPorts() {
-			for _, vlanHref := range p.GetVirtualNetworks() {
-				vlanId := path.Base(vlanHref.GetHref())
-
-				if vlanId == vlan.GetId() {
-					_, resp, err := client.PortsApi.
-						UnassignPort(ctx, p.GetId()).
-						PortAssignInput(metalv1.PortAssignInput{Vnid: &vlanId}).
-						Execute()
+	for _, instance := range vlan.Instances {
+		for _, port := range instance.NetworkPorts {
+			for _, v := range port.AttachedVirtualNetworks {
+				if v.ID == vlan.ID {
+					_, resp, err = client.Ports.Unassign(port.ID, vlan.ID)
 					if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
-						return diag.FromErr(equinix_errors.FriendlyError(err))
+						response.Diagnostics.AddError("Error unassign port with Vlan",
+							equinix_errors.FriendlyError(err).Error())
+						return
 					}
 				}
 			}
 		}
 	}
 
-	_, resp, err = client.VLANsApi.DeleteVirtualNetwork(ctx, vlan.GetId()).Execute()
+	resp, err = client.ProjectVirtualNetworks.Delete(vlan.ID)
 	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
-		return diag.FromErr(equinix_errors.FriendlyError(err))
+		response.Diagnostics.AddError("Error deleting Vlan",
+			equinix_errors.FriendlyError(err).Error())
+		return
 	}
-
-	return nil
 }
