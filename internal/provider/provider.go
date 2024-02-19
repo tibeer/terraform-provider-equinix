@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/equinix/terraform-provider-equinix/internal/resources/metal/vlans"
 	"regexp"
 
 	"github.com/equinix/terraform-provider-equinix/internal/config"
@@ -11,6 +10,8 @@ import (
 	metalgateway "github.com/equinix/terraform-provider-equinix/internal/resources/metal/gateway"
 	metalprojectsshkey "github.com/equinix/terraform-provider-equinix/internal/resources/metal/project_ssh_key"
 	metalsshkey "github.com/equinix/terraform-provider-equinix/internal/resources/metal/ssh_key"
+	"github.com/equinix/terraform-provider-equinix/internal/resources/metal/vlans"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
