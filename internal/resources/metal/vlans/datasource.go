@@ -7,7 +7,6 @@ import (
 	equinix_errors "github.com/equinix/terraform-provider-equinix/internal/errors"
 	"github.com/equinix/terraform-provider-equinix/internal/framework"
 
-	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/packethost/packngo"
@@ -32,7 +31,6 @@ func (r *DataSource) Schema(
 	if s.Blocks == nil {
 		s.Blocks = make(map[string]schema.Block)
 	}
-	s.Blocks["timeouts"] = timeouts.Block(ctx)
 	resp.Schema = s
 }
 

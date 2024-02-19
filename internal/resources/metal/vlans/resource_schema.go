@@ -14,12 +14,6 @@ import (
 
 func resourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		//CreateWithoutTimeout: resourceMetalVlanCreate,
-		//ReadWithoutTimeout:   resourceMetalVlanRead,
-		//DeleteWithoutTimeout: resourceMetalVlanDelete,
-		//Importer: &schema.ResourceImporter{
-		//	StateContext: schema.ImportStatePassthroughContext,
-		//},
 		Attributes: map[string]schema.Attribute{
 			"project_id": schema.StringAttribute{
 				Description: "ID of parent project",

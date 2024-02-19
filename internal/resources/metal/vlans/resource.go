@@ -5,13 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	equinix_errors "github.com/equinix/terraform-provider-equinix/internal/errors"
 	"github.com/equinix/terraform-provider-equinix/internal/framework"
 
-	"github.com/equinix/equinix-sdk-go/services/metalv1"
-	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/packethost/packngo"
@@ -30,7 +27,6 @@ func NewResource() resource.Resource {
 			},
 		),
 	}
-	r.SetDefaultDeleteTimeout(20 * time.Minute)
 
 	return &r
 }
@@ -44,9 +40,7 @@ func (r *Resource) Schema(
 	if s.Blocks == nil {
 		s.Blocks = make(map[string]schema.Block)
 	}
-	s.Blocks["timeouts"] = timeouts.Block(ctx, timeouts.Opts{
-		Delete: true,
-	})
+
 	resp.Schema = s
 }
 
@@ -71,30 +65,24 @@ func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, r
 		return
 	}
 
-	createRequest := metalv1.VirtualNetworkCreateInput{
-		Description: data.Description.ValueStringPointer(),
-	}
-	if !data.Metro.IsNull() {
-		createRequest.Metro = data.Metro.ValueStringPointer()
-		createRequest.Vxlan = metalv1.PtrInt32(int32(data.Vxlan.ValueInt64()))
-	}
-	if !data.Metro.IsNull() {
-		createRequest.Facility = data.Facility.ValueStringPointer()
-	}
-
-	var vlanModel ResourceModel
-	vlan, _, err := client.ProjectVirtualNetworks.Create(&packngo.VirtualNetworkCreateRequest{
+	createRequest := &packngo.VirtualNetworkCreateRequest{
 		ProjectID:   data.ProjectID.ValueString(),
 		Description: data.Description.ValueString(),
-		Facility:    data.Facility.ValueString(),
-		Metro:       data.Metro.ValueString(),
-		VXLAN:       int(data.Vxlan.ValueInt64()),
-	})
+	}
+	if !data.Metro.IsNull() {
+		createRequest.Metro = data.Metro.ValueString()
+		createRequest.VXLAN = int(data.Vxlan.ValueInt64())
+	}
+	if !data.Facility.IsNull() {
+		createRequest.Facility = data.Facility.ValueString()
+	}
+	vlan, _, err := client.ProjectVirtualNetworks.Create(createRequest)
 	if err != nil {
-		response.Diagnostics.AddError("Error creating Vlan using vlanId", equinix_errors.FriendlyError(err).Error())
+		response.Diagnostics.AddError("Error creating Vlan", equinix_errors.FriendlyError(err).Error())
 		return
 	}
 
+	var vlanModel ResourceModel
 	// Parse API response into the Terraform state
 	response.Diagnostics.Append(vlanModel.parse(vlan)...)
 	if response.Diagnostics.HasError() {
