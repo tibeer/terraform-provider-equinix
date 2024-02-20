@@ -4,9 +4,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/packethost/packngo"
+	"strings"
 )
 
 type DataSourceModel struct {
+	ID          types.String `tfsdk:"id"`
 	ProjectID   types.String `tfsdk:"project_id"`
 	VlanID      types.String `tfsdk:"vlan_id"`
 	Vxlan       types.Int64  `tfsdk:"vxlan"`
@@ -16,12 +18,19 @@ type DataSourceModel struct {
 }
 
 func (m *DataSourceModel) parse(vlan *packngo.VirtualNetwork) diag.Diagnostics {
+	m.ID = types.StringValue(vlan.ID)
 	m.ProjectID = types.StringValue(vlan.Project.ID)
 	m.VlanID = types.StringValue(vlan.ID)
 	m.Facility = types.StringValue(vlan.FacilityCode)
-	m.Metro = types.StringValue(vlan.MetroCode)
 	m.Description = types.StringValue(vlan.Description)
 	m.Vxlan = types.Int64Value(int64(vlan.VXLAN))
+
+	// version of this resource. StateFunc doesn't exist in terraform and it requires implementation
+	// of bespoke logic before storing state. To ensure backward compatibility we ignore lower/upper
+	// case diff for now, but we may want to require input upper case
+	if !strings.EqualFold(m.Metro.ValueString(), vlan.MetroCode) {
+		m.Metro = types.StringValue(vlan.MetroCode)
+	}
 	return nil
 }
 
@@ -38,8 +47,14 @@ func (m *ResourceModel) parse(vlan *packngo.VirtualNetwork) diag.Diagnostics {
 	m.ID = types.StringValue(vlan.ID)
 	m.ProjectID = types.StringValue(vlan.Project.ID)
 	m.Facility = types.StringValue(vlan.FacilityCode)
-	m.Metro = types.StringValue(vlan.MetroCode)
 	m.Description = types.StringValue(vlan.Description)
 	m.Vxlan = types.Int64Value(int64(vlan.VXLAN))
+
+	// version of this resource. StateFunc doesn't exist in terraform and it requires implementation
+	// of bespoke logic before storing state. To ensure backward compatibility we ignore lower/upper
+	// case diff for now, but we may want to require input upper case
+	if !strings.EqualFold(m.Metro.ValueString(), vlan.MetroCode) {
+		m.Metro = types.StringValue(vlan.MetroCode)
+	}
 	return nil
 }

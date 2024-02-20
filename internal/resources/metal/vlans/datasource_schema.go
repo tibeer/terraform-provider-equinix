@@ -54,8 +54,6 @@ func dataSourceSchema() schema.Schema {
 					}...),
 				},
 				Description: "Metro where the VLAN is deployed",
-				// TODO: @aayushrangwala to fix this
-				//StateFunc:   converters.ToLowerIf,
 			},
 			"vlan_id": schema.StringAttribute{
 				Optional: true,

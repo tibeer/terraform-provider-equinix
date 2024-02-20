@@ -15,6 +15,13 @@ import (
 func resourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "The unique identifier for this Metal Vlan",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"project_id": schema.StringAttribute{
 				Description: "ID of parent project",
 				Required:    true,
