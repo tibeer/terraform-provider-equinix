@@ -48,7 +48,7 @@ func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, r
 	r.Meta.AddFwModuleToMetalUserAgent(ctx, request.ProviderMeta)
 	client := r.Meta.Metal
 
-	var data DataSourceModel
+	var data ResourceModel
 	response.Diagnostics.Append(request.Config.Get(ctx, &data)...)
 	if response.Diagnostics.HasError() {
 		return
@@ -82,15 +82,14 @@ func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, r
 		return
 	}
 
-	var vlanModel ResourceModel
 	// Parse API response into the Terraform state
-	response.Diagnostics.Append(vlanModel.parse(vlan)...)
+	response.Diagnostics.Append(data.parse(vlan)...)
 	if response.Diagnostics.HasError() {
 		return
 	}
 
 	// Set state to fully populated data
-	response.Diagnostics.Append(response.State.Set(ctx, &vlanModel)...)
+	response.Diagnostics.Append(response.State.Set(ctx, &data)...)
 	return
 }
 
