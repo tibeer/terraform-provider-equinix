@@ -19,7 +19,11 @@ type DataSourceModel struct {
 
 func (m *DataSourceModel) parse(vlan *packngo.VirtualNetwork) diag.Diagnostics {
 	m.ID = types.StringValue(vlan.ID)
-	m.ProjectID = types.StringValue(vlan.Project.ID)
+
+	if vlan.Project.ID != "" {
+		m.ProjectID = types.StringValue(vlan.Project.ID)
+	}
+
 	m.VlanID = types.StringValue(vlan.ID)
 
 	m.Facility = types.StringNull()
@@ -50,7 +54,10 @@ type ResourceModel struct {
 
 func (m *ResourceModel) parse(vlan *packngo.VirtualNetwork) diag.Diagnostics {
 	m.ID = types.StringValue(vlan.ID)
-	m.ProjectID = types.StringValue(vlan.Project.ID)
+
+	if vlan.Project.ID != "" {
+		m.ProjectID = types.StringValue(vlan.Project.ID)
+	}
 
 	m.Facility = types.StringNull()
 	if vlan.FacilityCode != "" {
