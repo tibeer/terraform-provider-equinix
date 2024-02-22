@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-
 	equinix_errors "github.com/equinix/terraform-provider-equinix/internal/errors"
 	"github.com/equinix/terraform-provider-equinix/internal/framework"
 
@@ -149,10 +147,10 @@ func (r *Resource) Delete(ctx context.Context, request resource.DeleteRequest, r
 		&packngo.GetOptions{Includes: []string{"instances", "meta_gateway"}},
 	)
 	if err != nil {
-		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
+		if equinix_errors.IgnoreResponseErrors(equinix_errors.HttpForbidden, equinix_errors.HttpNotFound)(resp, err) != nil {
 			response.Diagnostics.AddWarning(
 				"Equinix Metal Vlan not found during delete",
-				err.Error(),
+				equinix_errors.FriendlyError(err).Error(),
 			)
 			return
 		}
@@ -167,7 +165,7 @@ func (r *Resource) Delete(ctx context.Context, request resource.DeleteRequest, r
 			for _, v := range port.AttachedVirtualNetworks {
 				if v.ID == vlan.ID {
 					_, resp, err = client.Ports.Unassign(port.ID, vlan.ID)
-					if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
+					if equinix_errors.IgnoreResponseErrors(equinix_errors.HttpForbidden, equinix_errors.HttpNotFound)(resp, err) != nil {
 						response.Diagnostics.AddError("Error unassign port with Vlan",
 							equinix_errors.FriendlyError(err).Error())
 						return
@@ -177,8 +175,7 @@ func (r *Resource) Delete(ctx context.Context, request resource.DeleteRequest, r
 		}
 	}
 
-	resp, err = client.ProjectVirtualNetworks.Delete(vlan.ID)
-	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
+	if equinix_errors.IgnoreResponseErrors(equinix_errors.HttpForbidden, equinix_errors.HttpNotFound)(client.ProjectVirtualNetworks.Delete(vlan.ID)) != nil {
 		response.Diagnostics.AddError("Error deleting Vlan",
 			equinix_errors.FriendlyError(err).Error())
 		return
