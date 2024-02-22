@@ -47,6 +47,7 @@ func resourceSchema(ctx context.Context) schema.Schema {
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 				// TODO: aayushrangwala to check if this is needed with the framework changes
 				//DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
