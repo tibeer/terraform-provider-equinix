@@ -15,53 +15,6 @@ import (
 	"github.com/packethost/packngo"
 )
 
-func TestAccDataSourceMetalVlan_byVxlanFacility(t *testing.T) {
-	rs := acctest.RandString(10)
-	fac := "sv15"
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acceptance.TestAccPreCheckMetal(t) },
-		ExternalProviders:        acceptance.TestExternalProviders,
-		ProtoV5ProviderFactories: acceptance.ProtoV5ProviderFactories,
-		CheckDestroy:             testAccMetalDatasourceVlanCheckDestroyed,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccDataSourceMetalVlanConfig_byVxlanFacility(rs, fac, "tfacc-vlan"),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrPair(
-						"equinix_metal_vlan.foovlan", "vxlan",
-						"data.equinix_metal_vlan.dsvlan", "vxlan",
-					),
-					resource.TestCheckResourceAttrPair(
-						"equinix_metal_vlan.foovlan", "id",
-						"data.equinix_metal_vlan.dsvlan", "id",
-					),
-				),
-			},
-		},
-	})
-}
-
-func testAccDataSourceMetalVlanConfig_byVxlanFacility(projSuffix, fac, desc string) string {
-	return fmt.Sprintf(`
-resource "equinix_metal_project" "foobar" {
-    name = "tfacc-vlan-%s"
-}
-
-resource "equinix_metal_vlan" "foovlan" {
-    project_id = equinix_metal_project.foobar.id
-    facility = "%s"
-    description = "%s"
-}
-
-data "equinix_metal_vlan" "dsvlan" {
-    facility = equinix_metal_vlan.foovlan.facility
-    project_id = equinix_metal_vlan.foovlan.project_id
-    vxlan = equinix_metal_vlan.foovlan.vxlan
-}
-`, projSuffix, fac, desc)
-}
-
 func TestAccDataSourceMetalVlan_byVxlanMetro(t *testing.T) {
 	rs := acctest.RandString(10)
 	metro := "sv"

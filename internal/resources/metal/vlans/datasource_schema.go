@@ -12,6 +12,10 @@ import (
 func dataSourceSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "The unique identifier for this Metal Vlan",
+				Computed:    true,
+			},
 			"project_id": schema.StringAttribute{
 				Description: "ID of parent project of the VLAN. Use together with vxlan and metro or facility",
 				Computed:    true,

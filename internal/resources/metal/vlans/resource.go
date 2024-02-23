@@ -53,12 +53,12 @@ func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, r
 	}
 
 	if data.Facility.IsNull() && data.Metro.IsNull() {
-		response.Diagnostics.AddError("Invalid inout params",
+		response.Diagnostics.AddError("Invalid input params",
 			equinix_errors.FriendlyError(errors.New("one of facility or metro must be configured")).Error())
 		return
 	}
-	if !(data.Facility.IsNull() && data.Vxlan.IsNull()) {
-		response.Diagnostics.AddError("Invalid inout params",
+	if !data.Facility.IsNull() && !data.Vxlan.IsNull() {
+		response.Diagnostics.AddError("Invalid input params",
 			equinix_errors.FriendlyError(errors.New("you can set vxlan only for metro vlans")).Error())
 		return
 	}
@@ -175,7 +175,7 @@ func (r *Resource) Delete(ctx context.Context, request resource.DeleteRequest, r
 		}
 	}
 
-	if equinix_errors.IgnoreResponseErrors(equinix_errors.HttpForbidden, equinix_errors.HttpNotFound)(client.ProjectVirtualNetworks.Delete(vlan.ID)) != nil {
+	if err := equinix_errors.IgnoreResponseErrors(equinix_errors.HttpForbidden, equinix_errors.HttpNotFound)(client.ProjectVirtualNetworks.Delete(vlan.ID)); err != nil {
 		response.Diagnostics.AddError("Error deleting Vlan",
 			equinix_errors.FriendlyError(err).Error())
 		return
