@@ -8,6 +8,7 @@ import (
 	"github.com/equinix/terraform-provider-equinix/internal/acceptance"
 	"github.com/equinix/terraform-provider-equinix/internal/config"
 	"github.com/equinix/terraform-provider-equinix/internal/resources/metal/vlans"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -289,4 +290,54 @@ func testAccMetalDatasourceVlanCheckDestroyed(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+func TestAccDataSourceMetalVlan_byVxlanMetro_upgradeFromVersion(t *testing.T) {
+	rs := acctest.RandString(10)
+	metro := "sv"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.TestAccPreCheckMetal(t) },
+		CheckDestroy: testAccMetalDatasourceVlanCheckDestroyed,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"equinix": {
+						VersionConstraint: "1.29.0", // latest version with resource defined on SDKv2
+						Source:            "equinix/equinix",
+					},
+				},
+				Config: testAccDataSourceMetalVlanConfig_byVxlanMetro(rs, metro, "tfacc-vlan"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPair(
+						"equinix_metal_vlan.foovlan", "vxlan",
+						"data.equinix_metal_vlan.dsvlan", "vxlan",
+					),
+					resource.TestCheckResourceAttrPair(
+						"equinix_metal_vlan.foovlan", "id",
+						"data.equinix_metal_vlan.dsvlan", "id",
+					),
+					resource.TestCheckResourceAttr(
+						"equinix_metal_vlan.barvlan", "vxlan", "6",
+					),
+					resource.TestCheckResourceAttr(
+						"data.equinix_metal_vlan.bardsvlan", "vxlan", "6",
+					),
+					resource.TestCheckResourceAttrPair(
+						"equinix_metal_vlan.barvlan", "id",
+						"data.equinix_metal_vlan.bardsvlan", "id",
+					),
+				),
+			},
+			{
+				ProtoV5ProviderFactories: acceptance.ProtoV5ProviderFactories,
+				Config:                   testAccDataSourceMetalVlanConfig_byVxlanMetro(rs, metro, "tfacc-vlan"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+		},
+	})
 }
