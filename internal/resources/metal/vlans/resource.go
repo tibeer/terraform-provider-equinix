@@ -4,12 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	equinix_errors "github.com/equinix/terraform-provider-equinix/internal/errors"
 	"github.com/equinix/terraform-provider-equinix/internal/framework"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/packethost/packngo"
+)
+
+var (
+	vlanDefaultIncludes = []string{"assigned_to", "facility", "metro"}
 )
 
 type Resource struct {
@@ -52,11 +57,11 @@ func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, r
 		return
 	}
 
-	if data.Facility.IsNull() && data.Metro.IsNull() {
+	/*if data.Facility.IsNull() && data.Metro.IsNull() {
 		response.Diagnostics.AddError("Invalid input params",
 			equinix_errors.FriendlyError(errors.New("one of facility or metro must be configured")).Error())
 		return
-	}
+	}*/
 	if !data.Facility.IsNull() && !data.Vxlan.IsNull() {
 		response.Diagnostics.AddError("Invalid input params",
 			equinix_errors.FriendlyError(errors.New("you can set vxlan only for metro vlans")).Error())
@@ -80,6 +85,12 @@ func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, r
 		return
 	}
 
+	vlan, _, err = client.ProjectVirtualNetworks.Get(vlan.ID, &packngo.GetOptions{Includes: vlanDefaultIncludes})
+	if err != nil {
+		response.Diagnostics.AddError("Error reading Vlan after create", equinix_errors.FriendlyError(err).Error())
+		return
+	}
+
 	// Parse API response into the Terraform state
 	response.Diagnostics.Append(data.parse(vlan)...)
 	if response.Diagnostics.HasError() {
@@ -88,7 +99,6 @@ func (r *Resource) Create(ctx context.Context, request resource.CreateRequest, r
 
 	// Set state to fully populated data
 	response.Diagnostics.Append(response.State.Set(ctx, &data)...)
-	return
 }
 
 func (r *Resource) Read(ctx context.Context, request resource.ReadRequest, response *resource.ReadResponse) {
@@ -103,7 +113,7 @@ func (r *Resource) Read(ctx context.Context, request resource.ReadRequest, respo
 
 	vlan, _, err := client.ProjectVirtualNetworks.Get(
 		data.ID.ValueString(),
-		&packngo.GetOptions{Includes: []string{"assigned_to"}},
+		&packngo.GetOptions{Includes: vlanDefaultIncludes},
 	)
 	if err != nil {
 		if equinix_errors.IsNotFound(err) {
