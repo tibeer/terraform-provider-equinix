@@ -596,7 +596,7 @@ func testAccFabricL2ConnectionAttributes(conn *ecx.L2Connection, ctx map[string]
 		if v, ok := ctx["connection-speed_unit"]; ok && ecx.StringValue(conn.SpeedUnit) != v.(string) {
 			return fmt.Errorf("speedUnit does not match %v - %v", ecx.StringValue(conn.SpeedUnit), v)
 		}
-		if v, ok := ctx["connection-notifications"]; ok && !slicesMatch(conn.Notifications, v.([]string)) {
+		if v, ok := ctx["connection-notifications"]; ok && !comparisons.SlicesMatch(conn.Notifications, v.([]string)) {
 			return fmt.Errorf("notifications does not match %v - %v", conn.Notifications, v)
 		}
 		if v, ok := ctx["connection-purchase_order_number"]; ok && ecx.StringValue(conn.PurchaseOrderNumber) != v.(string) {

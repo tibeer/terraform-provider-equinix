@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/equinix/terraform-provider-equinix/internal/config"
@@ -212,15 +211,6 @@ func configureProvider(ctx context.Context, d *schema.ResourceData, p *schema.Pr
 	return &config, nil
 }
 
-func stringsFound(source []string, target []string) bool {
-	for i := range source {
-		if !slices.Contains(target, source[i]) {
-			return false
-		}
-	}
-	return true
-}
-
 func atLeastOneStringFound(source []string, target []string) bool {
 	for i := range source {
 		if slices.Contains(target, source[i]) {
@@ -245,52 +235,4 @@ func isEmpty(v interface{}) bool {
 	default:
 		return false
 	}
-}
-
-func slicesMatch(s1, s2 []string) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	visited := make([]bool, len(s1))
-	for i := 0; i < len(s1); i++ {
-		found := false
-		for j := 0; j < len(s2); j++ {
-			if visited[j] {
-				continue
-			}
-			if s1[i] == s2[j] {
-				visited[j] = true
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
-}
-
-func slicesMatchCaseInsensitive(s1, s2 []string) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	visited := make([]bool, len(s1))
-	for i := 0; i < len(s1); i++ {
-		found := false
-		for j := 0; j < len(s2); j++ {
-			if visited[j] {
-				continue
-			}
-			if strings.EqualFold(s1[i], s2[j]) {
-				visited[j] = true
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
 }
