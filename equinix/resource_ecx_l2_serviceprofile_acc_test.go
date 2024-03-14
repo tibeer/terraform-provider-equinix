@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/equinix/terraform-provider-equinix/internal/comparisons"
 	"github.com/equinix/terraform-provider-equinix/internal/config"
+	"github.com/equinix/terraform-provider-equinix/internal/nprintf"
 
 	"github.com/equinix/ecx-go/v2"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -160,7 +162,7 @@ func testAccECXL2ServiceProfileAttributes(profile *ecx.L2ServiceProfile, ctx map
 }
 
 func testAccECXL2PrivateServiceProfile(ctx map[string]interface{}) string {
-	return nprintf(`
+	return nprintf.NPrintf(`
 data "equinix_ecx_port" "port1" {
     name = "%{port1_name}"
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/equinix/terraform-provider-equinix/internal/comparisons"
@@ -155,7 +153,6 @@ func TestProvider_atLeastOneStringFound(t *testing.T) {
 	assert.True(t, result, "Given strings were found")
 }
 
-
 func TestProvider_setSchemaValueIfNotEmpty(t *testing.T) {
 	// given
 	key := "test"
@@ -207,21 +204,6 @@ func newTestAccConfig(ctx map[string]interface{}) *testAccConfig {
 
 func (t *testAccConfig) build() string {
 	return t.config
-}
-
-func nprintf(format string, params map[string]interface{}) string {
-	for key, val := range params {
-		var strVal string
-		switch val.(type) {
-		case []string:
-			r := regexp.MustCompile(`" "`)
-			strVal = r.ReplaceAllString(fmt.Sprintf("%q", val), `", "`)
-		default:
-			strVal = fmt.Sprintf("%v", val)
-		}
-		format = strings.Replace(format, "%{"+key+"}", strVal, -1)
-	}
-	return format
 }
 
 func getFromEnv(varName string) (string, error) {

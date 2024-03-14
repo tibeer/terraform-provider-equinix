@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/equinix/terraform-provider-equinix/internal/config"
+	"github.com/equinix/terraform-provider-equinix/internal/nprintf"
 
 	"github.com/equinix/ne-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -94,7 +95,7 @@ func (t *testAccConfig) withBGP() *testAccConfig {
 
 func testAccNetworkBGP(ctx map[string]interface{}) string {
 	var config string
-	config += nprintf(`
+	config += nprintf.NPrintf(`
 resource "equinix_network_bgp" "%{bgp-resourceName}" {
   connection_id      = equinix_ecx_l2_connection.%{connection-resourceName}.id
   local_ip_address   = "%{bgp-local_ip_address}"
@@ -102,13 +103,13 @@ resource "equinix_network_bgp" "%{bgp-resourceName}" {
   remote_ip_address  = "%{bgp-remote_ip_address}"
   remote_asn         = %{bgp-remote_asn}`, ctx)
 	if _, ok := ctx["bgp-authentication_key"]; ok {
-		config += nprintf(`
+		config += nprintf.NPrintf(`
   authentication_key = "%{bgp-authentication_key}"`, ctx)
 	}
 	config += `
 }`
 	if _, ok := ctx["connection-secondary_name"]; ok {
-		config += nprintf(`
+		config += nprintf.NPrintf(`
 resource "equinix_network_bgp" "%{bgp-secondary_resourceName}" {
   connection_id      = equinix_ecx_l2_connection.%{connection-resourceName}.id
   local_ip_address   = "%{bgp-secondary_local_ip_address}"
@@ -116,7 +117,7 @@ resource "equinix_network_bgp" "%{bgp-secondary_resourceName}" {
   remote_ip_address  = "%{bgp-secondary_remote_ip_address}"
   remote_asn         = %{bgp-secondary_remote_asn}`, ctx)
 		if _, ok := ctx["bgp-secondary_authentication_key"]; ok {
-			config += nprintf(`
+			config += nprintf.NPrintf(`
   authentication_key = "%{bgp-secondary_authentication_key}"`, ctx)
 		}
 		config += `
