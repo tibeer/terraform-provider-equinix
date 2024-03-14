@@ -21,7 +21,6 @@ import (
 	nesshkey "github.com/equinix/terraform-provider-equinix/internal/resources/networkedge/ssh_key"
 	nesshuser "github.com/equinix/terraform-provider-equinix/internal/resources/networkedge/ssh_user"
 
-	"github.com/equinix/ecx-go/v2"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -218,21 +217,4 @@ func atLeastOneStringFound(source []string, target []string) bool {
 		}
 	}
 	return false
-}
-
-func isEmpty(v interface{}) bool {
-	switch v := v.(type) {
-	case int:
-		return v == 0
-	case *int:
-		return ecx.IntValue(v) == 0
-	case string:
-		return v == ""
-	case *string:
-		return ecx.StringValue(v) == ""
-	case nil:
-		return true
-	default:
-		return false
-	}
 }
