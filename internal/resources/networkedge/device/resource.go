@@ -1,4 +1,4 @@
-package equinix
+package device
 
 import (
 	"context"
@@ -202,7 +202,7 @@ var neDeviceVendorConfigDescriptions = map[string]string{
 	"RootPassword":   "The CLI password of the device. This field is relevant only for the Velocloud SDWAN cluster",
 }
 
-func resourceNetworkDevice() *schema.Resource {
+func Resource() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceNetworkDeviceCreate,
 		ReadContext:   resourceNetworkDeviceRead,
