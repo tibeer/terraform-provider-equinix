@@ -1,0 +1,38 @@
+---
+subcategory: "Fabric"
+---
+
+{{/* This template serves as a starting point for documentation generation, and can be customized with hardcoded values and/or doc gen templates.
+
+For example, the {{ .SchemaMarkdown }} template can be used to replace manual schema documentation if descriptions of schema attributes are added in the provider source code. */ -}}
+
+# equinix_ecx_port (Data Source)
+
+!> **DEPRECATED** End of Life will be June 30th, 2024. Use `equinix_fabric_port` and `equinix_fabric_ports` instead.
+
+Use this data source to get details of Equinix Fabric port with a given name.
+
+## Example Usage
+
+{{tffile "examples/data-sources/ecx_port/example_1.tf"}}
+
+## Argument Reference
+
+The following arguments are supported:
+
+* `name` - (Required) Name of the port.
+
+## Attributes Reference
+
+In addition to all arguments above, the following attributes are exported:
+
+* `uuid` - Unique identifier of the port.
+* `status` - Status of the port.
+* `region` - Port location region.
+* `ibx` - Port location Equinix Business Exchange (IBX).
+* `metro_code` - Port location metro code.
+* `priority` - The priority of the device (primary / secondary) where the port resides.
+* `encapsulation` - The VLAN encapsulation of the port (Dot1q or QinQ).
+* `buyout` - Boolean value that indicates whether the port supports unlimited connections. If `false`, the port is a standard port with limited connections. If `true`, the port is an `unlimited connections` port that allows multiple connections at no additional charge.
+* `bandwidth` - Port Bandwidth in bytes.
+* `status` - Port status that indicates whether a port has been assigned or is ready for connection.
